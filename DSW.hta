@@ -1,0 +1,210 @@
+<html xmlns:t xmlns:fc>
+<head>
+<title>Disk Space Waster</title>
+<hta:application applicationname="Disk Space Waster" version="1.0" windowstate="maximize" icon="ui\icon.ico" />
+
+<meta name="author" content="Javad Bayat">
+<meta http-equiv="content-type" content="text/html; charset = UTF-8">
+<meta http-equiv="MSThemeCompatible" content="Yes">
+
+<?import namespace="fc" implementation="ui\intbox.htc" ?>
+<?import namespace="t" implementation="core\ot\omegathread.htc" ?>
+
+<link rel="stylesheet" type="text/css" href="ui\beauty.css">
+
+<script src="ui\mainForm.js" type="text/jscript"></script>
+<script language="jscript">
+var tmid = 0;
+var wshShell = new ActiveXObject("WScript.Shell");
+var appName = document.title;
+var abortionRequest = 0;
+
+var FILE_CONTENT_RANDOM = -1;
+var TEM_EXEC_HALTED = 1;
+
+onload = function() {
+    setUIEventHandlers();
+    
+    document.mainForm.btnWaste.onclick = startWasting;
+    document.all.btnAbort.onclick = abortWasting;
+    spaceWasterThread.onbeforeexit = indicateAbortion;
+};
+
+function startWasting() {
+    var arg = {
+        filePath: document.mainForm.filePath.value,
+        fileSize: intAmount.value,
+        fileContent: document.mainForm.writeConstantBytes.checked ? intByteValue.value : FILE_CONTENT_RANDOM,
+        initProgressStatus: function() {
+            progressBar.style.backgroundColor = "threedface";
+            progressBar.filters[0].apply();
+            progressBar.filters[0].Percent = 0;
+            progressBar.style.backgroundColor = "blue";
+            
+            progress.innerText = "0%";
+            document.title = appName + " (0%)";
+        },
+        indicateProgress: function(p) {
+            progressBar.filters[0].Percent = p;
+            progressBar.filters[0].Enabled = true;
+            
+            progress.innerText = p + "%";
+            document.title = appName + " (" + p + "%)";
+        },
+        indicateCompletion: function() {
+            wshShell.Popup("The disk space has been successfully wasted!", 0, appName, 64);
+            
+            switchToInputIdle();
+        }
+    };
+    
+    if (!arg.filePath) {
+        alert("The File Path field is empty.");
+        return;
+    }
+    
+    switch (document.mainForm.amountUnit.selectedIndex) {
+    case 0 : // Bytes
+        // Do nothing
+        break;
+    case 1 : // KB
+        arg.fileSize *= 0x400;
+        break;
+    case 2 : // MB
+        arg.fileSize *= 0x100000;
+        break;
+    case 3 : // GB
+        arg.fileSize *= 0x40000000;
+        break;
+    }
+    
+    tmid = spaceWasterThread.start(arg);
+    
+    switchToOperationStatus();
+}
+
+function abortWasting() {
+    abortionRequest = event.shiftKey ? 2 : 1;
+    this.disabled = true;
+    this.filters[0].Enabled = true;
+    this.style.cursor = "default";
+}
+
+function indicateAbortion() {
+    if (event.exitMode == TEM_EXEC_HALTED) {
+        abortionRequest = 0;
+        
+        document.all.btnAbort.disabled = false;
+        document.all.btnAbort.filters[0].Enabled = false;
+        document.all.btnAbort.style.cursor = "hand";
+        
+        switchToInputIdle();
+    }
+}
+</script>
+
+<t:thread id="spaceWasterThread" slanguage="jscript" cd=".\core">
+<script>
+var mobs = importWSC("mobs\\mobstream.wsc");
+mobs.Init("mobs\\mobstream-seed");
+
+var EC_OPERATION_ABORTED = 1;
+extern("FILE_CONTENT_RANDOM");
+
+tparam.initProgressStatus();
+
+if (window.abortionRequest)
+    threadc.exit(EC_OPERATION_ABORTED);
+
+mobs.Open(tparam.filePath);
+
+var fs = tparam.fileSize;
+var fc = tparam.fileContent;
+var currentProgress = 0;
+
+for (var i = 0; i < fs; i++) {
+    if (fc == FILE_CONTENT_RANDOM)
+        var b = Math.round(Math.random() * 255);
+    else
+        var b = fc;
+    
+    mobs.Write([b]);
+    interactWithUI();
+}
+
+mobs.Close();
+
+if (window.abortionRequest) {
+    threadc.fso.DeleteFile(tparam.filePath);
+    threadc.exit(EC_OPERATION_ABORTED);
+}
+
+tparam.indicateCompletion();
+
+function interactWithUI() {
+    var progress = Math.floor(i / fs * 100);
+    if (progress > currentProgress) {
+        tparam.indicateProgress(currentProgress = progress);
+        
+        switch (window.abortionRequest) {
+        case 1 :
+            threadc.exit(EC_OPERATION_ABORTED);
+            break;
+        case 2 :
+            mobs.Close();
+            window.alert("Operation was aborted, though " + (getFileSize(i + 1)) + " of data that had already been processed was stored into the disk.");
+            threadc.exit(EC_OPERATION_ABORTED);
+            break;
+        }
+    }
+}
+
+function getFileSize(nBytes) {
+    var divideby;
+    var tagg;
+    if (nBytes / 1024 < 1) {
+        divideby = 1;
+        tagg = "bytes";
+    }
+    else if (nBytes / (1024 * 1024) < 1) {
+        divideby = 1024;
+        tagg = "KB";
+    }
+    else if (nBytes / (1024 * 1024 * 1024) < 1) {
+        divideby = 1024 * 1024;
+        tagg = "MB";
+    }
+    else if (nBytes / (1024 * 1024 * 1024 * 1024) < 1) {
+        divideby = 1024 * 1024 * 1024;
+        tagg = "GB";
+    }
+    var i = nBytes / divideby;
+    var x = Number(Math.floor(i * 100) / 100);
+    return x.toFixed(2) + " " + tagg;
+}
+</script>
+</t:thread>
+</head>
+<body scroll="auto" bgcolor="#ffffcc" leftmargin="0">
+<form name="mainForm" onsubmit="return false;">
+<label for="txtFilePath">File path:</label>
+<input type="text" id="txtFilePath" name="filePath"><br>
+<label>Amount of space:</label>
+<fc:intbox id="intAmount" name="amount" min="0" value="200" />
+<select id="selAmountUnit" name="amountUnit">
+    <option value="Bytes">Bytes</option>
+    <option value="KB">KB</option>
+    <option value="MB" selected>MB</option>
+    <option value="GB">GB</option>
+</select><br>
+<input type="checkbox" id="chkConstantBytes" name="writeConstantBytes">
+<label for="chkConstantBytes">Write out bytes with constant values</label><br>
+<label class="subitem">Value of each byte:</label>
+<fc:intbox id="intByteValue" name="byteValue" min="0" max="255" cdisabled="true" /><br>
+<button name="btnWaste">Waste!</button><br>
+<div id="progressBar" style="display: none;"></div>
+<div id="progress" style="visibility: hidden;"></div>
+<img id="btnAbort" src="ui\abort.png" width="60px" height="60px" style="visibility: hidden; cursor: hand;">
+</form>
+</body>
+</html>
