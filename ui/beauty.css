@@ -1,0 +1,68 @@
+#txtFilePath {
+    width: 300px;
+}
+
+.subitem {
+    margin-left: 40px;
+}
+
+form {
+    background-image: url('bgForm.jpg');
+    padding: 10px;
+    border: 5px double highlight;
+    width: 450px;
+    position: relative;
+    left: 50%;
+    margin-left: -225px;
+}
+
+button {
+    position: absolute;
+    right: 12px;
+    bottom: 8px;
+    color: red;
+    zoom: 150%;
+}
+
+label {
+    color: blue;
+}
+
+#selAmountUnit {
+    vertical-align: middle;
+    /* height: 25px; */
+    zoom: 115%;
+}
+
+#progressBar {
+    display: inline;
+    width: 50%;
+    height: 60px;
+    border: 1px solid black;
+    cursor: wait;
+    filter: revealTrans( transition=6 );
+}
+
+#progress {
+    display: inline;
+    width: 60px;
+    height: 60px;
+    margin-left: 4px;
+    padding-top: 17px;
+    text-align: center;
+    background-image: url('circle.png');
+    background-repeat: no-repeat;
+    font-size: large;
+    cursor: wait;
+}
+
+#btnAbort {
+    vertical-align: top;
+    margin-left: 4px;
+    filter:
+        progid:DXImageTransform.Microsoft.Emboss( enabled=false );
+}
+
+#progressBar, #progress, #btnAbort {
+    zoom: 50%;
+}
