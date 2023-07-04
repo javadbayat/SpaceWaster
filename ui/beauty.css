@@ -66,3 +66,7 @@ label {
 #progressBar, #progress, #btnAbort {
     zoom: 50%;
 }
+
+#zipProgBar {
+    zoom: 150%;
+}
