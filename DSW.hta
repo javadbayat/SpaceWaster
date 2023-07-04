@@ -51,6 +51,9 @@ function startWasting() {
             progress.innerText = p + "%";
             document.title = appName + " (" + p + "%)";
         },
+        indicateZipStage: function() {
+            switchToZippingStatus();
+        },
         indicateCompletion: function() {
             wshShell.Popup("The disk space has been successfully wasted!", 0, appName, 64);
             
@@ -109,6 +112,8 @@ var mobs = importWSC("mobs\\mobstream.wsc");
 mobs.Init("mobs\\mobstream-seed");
 
 var EC_OPERATION_ABORTED = 1;
+var ZAF_DELETE_AFTER_ARCHIVING = 1;
+var FOF_NO_UI = 1556;
 extern("FILE_CONTENT_RANDOM");
 
 tparam.initProgressStatus();
@@ -116,7 +121,16 @@ tparam.initProgressStatus();
 if (window.abortionRequest)
     threadc.exit(EC_OPERATION_ABORTED);
 
-mobs.Open(tparam.filePath);
+var fp = tparam.filePath;
+var mustZip = (threadc.fso.GetExtensionName(fp).toLowerCase() == "zip");
+if (mustZip) {
+    var tempFileName = threadc.fso.GetTempName();
+    var parentFolder = threadc.fso.GetParentFolderName(fp);
+    var tempFilePath = threadc.fso.BuildPath(parentFolder, tempFileName);
+    mobs.Open(tempFilePath);
+}
+else
+    mobs.Open(fp);
 
 var fs = tparam.fileSize;
 var fc = tparam.fileContent;
@@ -135,8 +149,19 @@ for (var i = 0; i < fs; i++) {
 mobs.Close();
 
 if (window.abortionRequest) {
-    threadc.fso.DeleteFile(tparam.filePath);
+    threadc.fso.DeleteFile(mustZip ? tempFilePath : fp);
     threadc.exit(EC_OPERATION_ABORTED);
+}
+
+if (mustZip) {
+    tparam.indicateZipStage();
+    
+    mobs.ZipInit(-1, threadc.fso, -1);
+    mobs.ZipOpen(fp);
+    mobs.ZipAdd(tempFilePath, FOF_NO_UI, ZAF_DELETE_AFTER_ARCHIVING);
+    threadc.sleep(500);
+    mobs.ZipPoll(Infinity);
+    mobs.ZipClose();
 }
 
 tparam.indicateCompletion();
@@ -205,6 +230,7 @@ function getFileSize(nBytes) {
 <div id="progressBar" style="display: none;"></div>
 <div id="progress" style="visibility: hidden;"></div>
 <img id="btnAbort" src="ui\abort.png" width="60px" height="60px" style="visibility: hidden; cursor: hand;">
+<img id="zipProgBar" src="ui\progbar.gif" style="display: none;">
 </form>
 </body>
 </html>
